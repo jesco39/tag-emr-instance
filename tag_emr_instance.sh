@@ -7,7 +7,7 @@
 #
 # Usage:
 #
-#   tag_emr_instance.sh [--aws-credentials=S3_PATH] TAG_NAME[=TAG_VALUE] TAG...
+#   tag_emr_instance.sh TAG_NAME[=TAG_VALUE] TAG...
 #
 # Copyright (C) 2013 Tiago Alves Macambira <macambira (@) chaordicsystems.com>
 #
@@ -34,26 +34,22 @@ mkdir --parent ${INSTALL_DIR}
 cd ${INSTALL_DIR}
 
 # Command line parsing
-#
-# Try to download AWS credentials, if instructed to do so. Otherwise we will
-# use credentials provided by the environment.
-#
+
+# Grab existing credentials from core-site.xml
+HADOOP_CONF='/home/hadoop/conf/core-site.xml'
+
+export AWS_ACCESS_KEY=`cat ${HADOOP_CONF} | grep fs.s3.awsAccessKeyId | egrep -o "<value>\w.+</value>" | sed -e 's,.*<value>\([^<]*\)</value>.*,\1,g'`
+export AWS_SECRET_KEY=`cat ${HADOOP_CONF} | grep  fs.s3.awsSecretAccessKey | egrep -o "<value>\w.+</value>" | sed -e 's,.*<value>\([^<]*\)</value>.*,\1,g'`
+
 # Aditional arguments will be used as tags to ec2-create-tags.
 TAG_ARGS=""
 for tag in "$@" ; do
     case $tag in
-        --aws-credentials=s3*)
-            AWS_CREDENTIALS_URL=$(echo $tag | cut -d= -f2)
-            hadoop dfs -get "${AWS_CREDENTIALS_URL}" credentials.sh
-            source credentials.sh
-            rm credentials.sh
-            ;;
         *)
             TAG_ARGS="${TAG_ARGS} --tag ${tag}"
             ;;
     esac
 done
-
 
 set +o nounset  # disable unset errors
 if [ -z "${AWS_ACCESS_KEY}" -o -z "${AWS_SECRET_KEY}" ]; then
